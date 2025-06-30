@@ -30,7 +30,8 @@ zeroize = { version = "1.8", optional = true, default-features = false }
 aead = { version = "0.6.0-rc.1", features = ["dev"], default-features = false }
 
 [features]
-default = ["alloc", "os_rng"]
+#default = ["alloc", "os_rng", "streaming"]
+default = ["alloc", "os_rng", "streaming", "zeroize"]
 alloc = ["aead/alloc"]
 arrayvec = ["aead/arrayvec"]
 bytes = ["aead/bytes"]
@@ -39,6 +40,7 @@ heapless = ["aead/heapless"]
 rand_core = ["aead/rand_core"]
 reduced-round = []
 zeroize = ["dep:zeroize", "chacha20/zeroize"]
+streaming = []
 
 [package.metadata.docs.rs]
 all-features = true

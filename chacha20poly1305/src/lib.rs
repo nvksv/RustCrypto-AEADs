@@ -138,10 +138,15 @@
 //! ```
 
 mod cipher;
+#[cfg(feature = "streaming")]
+mod streaming_cipher;
 
 pub use aead::{self, AeadCore, AeadInOut, Error, KeyInit, KeySizeUser, consts};
 
+#[cfg(not(feature = "streaming"))]
 use self::cipher::Cipher;
+#[cfg(feature = "streaming")]
+use self::streaming_cipher::Cipher;
 use ::cipher::{KeyIvInit, StreamCipher, StreamCipherSeek};
 use aead::{
     TagPosition,
@@ -273,6 +278,21 @@ where
         Cipher::new(C::new(&self.key, nonce)).decrypt_inout_detached(associated_data, buffer, tag)
     }
 }
+
+#[cfg(feature = "streaming")]
+impl<C, N> ChaChaPoly1305<C, N>
+where
+    C: KeyIvInit<KeySize = U32, IvSize = N> + StreamCipher + StreamCipherSeek,
+    N: ArraySize,
+{
+    pub fn with_nonce( 
+        &self,
+        nonce: &aead::Nonce<Self>,
+    ) -> Cipher<C> {
+        Cipher::new(C::new(&self.key, nonce))
+    }
+}
+
 
 impl<C, N> Clone for ChaChaPoly1305<C, N>
 where
