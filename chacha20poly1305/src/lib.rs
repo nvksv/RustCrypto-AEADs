@@ -146,8 +146,11 @@ pub use aead::{self, AeadCore, AeadInOut, Error, KeyInit, KeySizeUser, consts};
 #[cfg(not(feature = "streaming"))]
 use self::cipher::Cipher;
 #[cfg(feature = "streaming")]
-use self::streaming_cipher::Cipher;
+pub use self::streaming_cipher::Cipher;
+#[cfg(not(feature = "streaming"))]
 use ::cipher::{KeyIvInit, StreamCipher, StreamCipherSeek};
+#[cfg(feature = "streaming")]
+pub use ::cipher::{KeyIvInit, StreamCipher, StreamCipherSeek};
 use aead::{
     TagPosition,
     array::{Array, ArraySize},
