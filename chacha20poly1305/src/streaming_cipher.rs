@@ -232,7 +232,7 @@ where
         #[cfg(not(feature = "zeroize"))] 
         let mac_buffer = &self.mac_buffer;
         #[cfg(feature = "zeroize")] 
-        let mac_buffer = &*self.mac_buffer;
+        let mac_buffer = &self.mac_buffer[..self.mac_buffer_pos];
 
         self.mac.update_padded( mac_buffer );
         self.mac_buffer_pos = 0;
