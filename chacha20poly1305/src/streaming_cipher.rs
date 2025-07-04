@@ -268,7 +268,7 @@ where
     /// method will return [`StreamCipherError`] without modifying provided `data`.
     fn try_apply_keystream_inout(
         &mut self,
-        buf: InOutBuf<'_, '_, u8>,
+        mut buf: InOutBuf<'_, '_, u8>,
     ) -> Result<(), StreamCipherError> {
         match self.mode {
             CipherMode::AfterNonce => {
@@ -286,8 +286,8 @@ where
 
         self.data_length += buf.len() as u64;
 
-        self.update_mac_buffer( buf.get_in() );
-        self.cipher.apply_keystream_inout(buf);
+        self.cipher.apply_keystream_inout( buf.reborrow() );
+        self.update_mac_buffer( buf.get_out() );
 
         Ok(())
     }
