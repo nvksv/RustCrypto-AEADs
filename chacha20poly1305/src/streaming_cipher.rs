@@ -1,10 +1,11 @@
 //! Core AEAD cipher implementation for (X)ChaCha20Poly1305.
 
+use cipher::BlockSizeUser;
 use ::cipher::{StreamCipher, StreamCipherSeek, StreamCipherError};
-use aead::{Error, array::Array, inout::InOutBuf};
+use aead::{array::{Array, ArraySize}, inout::InOutBuf, Error};
 use poly1305::{
     Poly1305,
-    universal_hash::{KeyInit, UniversalHash},
+    universal_hash::{KeyInit, UniversalHash, Key, Block},
 };
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroizing;
@@ -18,8 +19,14 @@ const BLOCK_SIZE: usize = 64;
 /// counter overflows.
 const MAX_BLOCKS: usize = u32::MAX as usize;
 
+#[derive(Debug, Clone, Copy)]
+pub enum Direction {
+    Encryption,
+    Decryption
+}
+
 #[derive(Debug, PartialEq, Eq)]
-enum CipherMode {
+enum CipherState {
     AfterNonce,
     AssociatedData,
     Data,
@@ -27,13 +34,15 @@ enum CipherMode {
 }
 
 /// ChaCha20Poly1305 instantiated with a particular nonce
-pub struct Cipher<C>
+pub struct StreamingCipher<C, H>
 where
     C: StreamCipher + StreamCipherSeek,
+    H: UniversalHash,
 {
+    direction: Direction,
     cipher: C,
-    mac: Poly1305,
-    mode: CipherMode,
+    mac: H,
+    mode: CipherState,
     associated_data_length: u64,
     data_length: u64,
     #[cfg(not(feature = "zeroize"))] 
@@ -43,17 +52,18 @@ where
     mac_buffer_pos: usize,
 }
 
-impl<C> Cipher<C>
+impl<C, H> StreamingCipher<C, H>
 where
     C: StreamCipher + StreamCipherSeek,
+    H: UniversalHash + KeyInit,
 {
     /// Instantiate the underlying cipher with a particular nonce
-    pub(crate) fn new(mut cipher: C) -> Self {
+    pub(crate) fn new( mut cipher: C, direction: Direction ) -> Self {
         // Derive Poly1305 key from the first 32-bytes of the ChaCha20 keystream
-        let mut mac_key = poly1305::Key::default();
+        let mut mac_key = Key::<H>::default();
         cipher.apply_keystream(&mut mac_key);
 
-        let mac = Poly1305::new(&mac_key);
+        let mac = H::new(&mac_key);
         #[cfg(feature = "zeroize")]
         {
             use zeroize::Zeroize;
@@ -64,9 +74,10 @@ where
         cipher.seek(BLOCK_SIZE as u64);
 
         Self { 
+            direction,
             cipher, 
             mac, 
-            mode: CipherMode::AfterNonce,
+            mode: CipherState::AfterNonce,
             associated_data_length: 0,
             data_length: 0,
             #[cfg(not(feature = "zeroize"))] 
@@ -76,15 +87,21 @@ where
             mac_buffer_pos: 0,
         }
     }
+}
 
+impl<C, H> StreamingCipher<C, H>
+where
+    C: StreamCipher + StreamCipherSeek,
+    H: UniversalHash,
+{
     /// Encrypt the given message in-place, returning the authentication tag
     pub fn encrypt_inout_detached(
         mut self,
         associated_data: &[u8],
         mut buffer: InOutBuf<'_, '_, u8>,
-    ) -> Result<Tag, Error> {
-        if self.mode != CipherMode::AfterNonce {
-            self.mode = CipherMode::Error;
+    ) -> Result<Block<H>, Error> {
+        if self.mode != CipherState::AfterNonce {
+            self.mode = CipherState::Error;
             return Err(Error);
         }
 
@@ -111,10 +128,10 @@ where
         mut self,
         associated_data: &[u8],
         buffer: InOutBuf<'_, '_, u8>,
-        tag: &Tag,
+        tag: &Block<H>,
     ) -> Result<(), Error> {
-        if self.mode != CipherMode::AfterNonce {
-            self.mode = CipherMode::Error;
+        if self.mode != CipherState::AfterNonce {
+            self.mode = CipherState::Error;
             return Err(Error);
         }
 
@@ -149,23 +166,6 @@ where
         self.mac.update(&[block]);
 
         Ok(())
-    }
-
-    pub fn finalize( mut self ) -> Result<Tag, Error> {
-        match self.mode {
-            CipherMode::AfterNonce => {
-                debug_assert!( self.mac_buffer_pos == 0 );
-            },
-            CipherMode::AssociatedData | CipherMode::Data => {
-                self.finalize_mac_buffer();
-            },
-            CipherMode::Error => {
-                return Err(Error);
-            }
-        }
-
-        self.authenticate_lengths( self.associated_data_length, self.data_length )?;
-        Ok(self.mac.finalize())
     }
 
     fn update_mac_buffer( &mut self, mut data: &[u8] ) {
@@ -240,12 +240,12 @@ where
 
     pub fn apply_associated_data( &mut self, associated_data: &[u8] ) -> Result<(), Error> {
         match self.mode {
-            CipherMode::AfterNonce => {
-                self.mode = CipherMode::AssociatedData;
+            CipherState::AfterNonce => {
+                self.mode = CipherState::AssociatedData;
             },
-            CipherMode::AssociatedData => {},
-            CipherMode::Data | CipherMode::Error => {
-                self.mode = CipherMode::Error;
+            CipherState::AssociatedData => {},
+            CipherState::Data | CipherState::Error => {
+                self.mode = CipherState::Error;
                 return Err(Error);
             }
         }
@@ -258,9 +258,10 @@ where
     }
 }
 
-impl<C> StreamCipher for Cipher<C>
+impl<C, H> StreamCipher for StreamingCipher<C, H>
 where
     C: StreamCipher + StreamCipherSeek,
+    H: UniversalHash,
 {
     /// Apply keystream to `inout` data.
     ///
@@ -271,27 +272,84 @@ where
         mut buf: InOutBuf<'_, '_, u8>,
     ) -> Result<(), StreamCipherError> {
         match self.mode {
-            CipherMode::AfterNonce => {
-                self.mode = CipherMode::Data;
+            CipherState::AfterNonce => {
+                self.mode = CipherState::Data;
             },
-            CipherMode::AssociatedData => {
+            CipherState::AssociatedData => {
                 self.finalize_mac_buffer();
-                self.mode = CipherMode::Data;
+                self.mode = CipherState::Data;
             },
-            CipherMode::Data => {},
-            CipherMode::Error => {
+            CipherState::Data => {},
+            CipherState::Error => {
                 return Err(StreamCipherError);
             }
         }
 
         self.data_length += buf.len() as u64;
 
-        self.cipher.apply_keystream_inout( buf.reborrow() );
-        self.update_mac_buffer( buf.get_out() );
+        match self.direction {
+            Direction::Encryption => {
+                self.cipher.apply_keystream_inout( buf.reborrow() );
+                self.update_mac_buffer( buf.get_out() );
+            },
+            Direction::Decryption => {
+                self.update_mac_buffer( buf.get_in() );
+                self.cipher.apply_keystream_inout( buf );
+            },
+        }
 
         Ok(())
     }
 
 }
 
+pub trait AeadFinalize<TagSize: ArraySize> {
+    fn finalize( self ) -> Result<Array<u8, TagSize>, Error>;
+    fn verify( self, expected: &Array<u8, TagSize> ) -> Result<(), Error>;
+}
 
+impl<C, H> AeadFinalize<H::BlockSize> for StreamingCipher<C, H>
+where
+    C: StreamCipher + StreamCipherSeek,
+    H: UniversalHash,
+{
+    fn finalize( mut self ) -> Result<Block<H>, Error> {
+        match self.mode {
+            CipherState::AfterNonce => {
+                debug_assert!( self.mac_buffer_pos == 0 );
+            },
+            CipherState::AssociatedData | CipherState::Data => {
+                self.finalize_mac_buffer();
+            },
+            CipherState::Error => {
+                return Err(Error);
+            }
+        }
+
+        self.authenticate_lengths( self.associated_data_length, self.data_length )?;
+        
+        Ok(self.mac.finalize())
+    }
+
+    fn verify( mut self, expected: &Block<H> ) -> Result<(), Error> {
+        match self.mode {
+            CipherState::AfterNonce => {
+                debug_assert!( self.mac_buffer_pos == 0 );
+            },
+            CipherState::AssociatedData | CipherState::Data => {
+                self.finalize_mac_buffer();
+            },
+            CipherState::Error => {
+                return Err(Error);
+            }
+        }
+
+        self.authenticate_lengths( self.associated_data_length, self.data_length )?;
+
+        if self.mac.verify(expected).is_ok() {
+            Ok(())
+        } else {
+            Err(Error)
+        }
+    }
+}

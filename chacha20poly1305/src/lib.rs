@@ -143,14 +143,8 @@ mod streaming_cipher;
 
 pub use aead::{self, AeadCore, AeadInOut, Error, KeyInit, KeySizeUser, consts};
 
-#[cfg(not(feature = "streaming"))]
 use self::cipher::Cipher;
-#[cfg(feature = "streaming")]
-pub use self::streaming_cipher::Cipher;
-#[cfg(not(feature = "streaming"))]
 use ::cipher::{KeyIvInit, StreamCipher, StreamCipherSeek};
-#[cfg(feature = "streaming")]
-pub use ::cipher::{KeyIvInit, StreamCipher, StreamCipherSeek};
 use aead::{
     TagPosition,
     array::{Array, ArraySize},
@@ -158,6 +152,12 @@ use aead::{
     inout::InOutBuf,
 };
 use core::marker::PhantomData;
+
+#[cfg(feature = "streaming")]
+pub use self::streaming_cipher::{ StreamingCipher, Direction, AeadFinalize };
+// #[cfg(feature = "streaming")]
+// pub use ::cipher::{IvSizeUser, KeyIvInit, StreamCipher, StreamCipherSeek};
+
 
 use chacha20::{ChaCha20, XChaCha20};
 
@@ -282,21 +282,6 @@ where
     }
 }
 
-#[cfg(feature = "streaming")]
-impl<C, N> ChaChaPoly1305<C, N>
-where
-    C: KeyIvInit<KeySize = U32, IvSize = N> + StreamCipher + StreamCipherSeek,
-    N: ArraySize,
-{
-    pub fn with_nonce( 
-        &self,
-        nonce: &aead::Nonce<Self>,
-    ) -> Cipher<C> {
-        Cipher::new(C::new(&self.key, nonce))
-    }
-}
-
-
 impl<C, N> Clone for ChaChaPoly1305<C, N>
 where
     N: ArraySize,
@@ -325,3 +310,31 @@ where
 
 #[cfg(feature = "zeroize")]
 impl<C, N: ArraySize> zeroize::ZeroizeOnDrop for ChaChaPoly1305<C, N> {}
+
+#[cfg(feature = "streaming")]
+pub trait AeadToStreaming: AeadCore {
+    type Encryptor: StreamCipher + AeadFinalize<Self::TagSize>;
+    type Decryptor: StreamCipher + AeadFinalize<Self::TagSize>;
+
+    fn to_encryptor( &self, nonce: &Array<u8, <Self as AeadCore>::NonceSize> ) -> Self::Encryptor;
+    fn to_decryptor( &self, nonce: &Array<u8, <Self as AeadCore>::NonceSize> ) -> Self::Encryptor;
+}
+
+#[cfg(feature = "streaming")]
+impl<C, N> AeadToStreaming for ChaChaPoly1305<C, N>
+where
+    C: KeyIvInit<KeySize = U32, IvSize = N> + StreamCipher + StreamCipherSeek,
+    N: ArraySize,
+{
+    type Encryptor = StreamingCipher<C, poly1305::Poly1305>;
+    type Decryptor = StreamingCipher<C, poly1305::Poly1305>;
+
+    #[inline]
+    fn to_encryptor( &self, nonce: &Array<u8, <ChaChaPoly1305<C, N> as AeadCore>::NonceSize> ) -> Self::Encryptor {
+        StreamingCipher::new(C::new(&self.key, nonce), Direction::Encryption )
+    }
+
+    fn to_decryptor( &self, nonce: &Array<u8, <ChaChaPoly1305<C, N> as AeadCore>::NonceSize> ) -> Self::Encryptor {
+        StreamingCipher::new(C::new(&self.key, nonce), Direction::Decryption )
+    }
+}
