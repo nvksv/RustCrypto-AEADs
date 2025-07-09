@@ -1,16 +1,11 @@
 //! Core AEAD cipher implementation for (X)ChaCha20Poly1305.
 
-use cipher::BlockSizeUser;
 use ::cipher::{StreamCipher, StreamCipherSeek, StreamCipherError};
 use aead::{array::{Array, ArraySize}, inout::InOutBuf, Error};
-use poly1305::{
-    Poly1305,
-    universal_hash::{KeyInit, UniversalHash, Key, Block},
-};
+use poly1305::universal_hash::{KeyInit, UniversalHash, Key, Block};
+
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroizing;
-
-use super::Tag;
 
 /// Size of a ChaCha20 block in bytes
 const BLOCK_SIZE: usize = 64;
