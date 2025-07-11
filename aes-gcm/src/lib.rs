@@ -379,14 +379,13 @@ where
 }
 
 #[cfg(feature = "streaming")]
-impl<Aes, NonceSize, TagSize> AeadToStreaming for AesGcm<Aes, NonceSize, TagSize>
+impl<Aes, NonceSize> AeadToStreaming for AesGcm<Aes, NonceSize, U16>
 where
     Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt + Clone,
     NonceSize: ArraySize,
-    TagSize: self::TagSize,
 {
-    type Encryptor = StreamingCipher<Aes, TagSize>;
-    type Decryptor = StreamingCipher<Aes, TagSize>;
+    type Encryptor = StreamingCipher<Aes, U16>;
+    type Decryptor = StreamingCipher<Aes, U16>;
 
     #[inline]
     fn to_encryptor( &self, nonce: &Array<u8, <Self as AeadCore>::NonceSize> ) -> Self::Encryptor {

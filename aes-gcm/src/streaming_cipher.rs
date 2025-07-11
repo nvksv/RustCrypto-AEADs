@@ -4,13 +4,11 @@ use super::*;
 
 use core::marker::PhantomData;
 
-use ::cipher::{BlockSizeUser, BlockCipherEncrypt, BlockCipherEncClosure, BlockCipherDecrypt, BlockCipherDecClosure};
+use ::cipher::{BlockSizeUser};
 use aead::{inout::InOutBuf, Error, AeadFinalize};
-use ghash::{GHash, universal_hash::{KeyInit, UniversalHash, Key, Block}};
+use ghash::{GHash, universal_hash::{UniversalHash}};
 use cipher::{
-    InnerIvInit, StreamCipherCore,
-    array::{Array, ArraySize},
-    consts::U16,
+    array::{Array, ArraySize}, consts::U16, InnerIvInit, StreamCipher, StreamCipherCore, StreamCipherError, StreamCipherCoreWrapper,
 };
 
 
@@ -36,28 +34,27 @@ enum CipherState {
 /// AES-GCM instantiated with a particular nonce
 pub struct StreamingCipher<Aes, TagSize>
 where
-    Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt + BlockCipherDecrypt,
+    Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt,
     TagSize: super::TagSize,
 {
     direction: Direction,
-    ctr: Ctr32BE<Aes>,
+    cipher: StreamCipherCoreWrapper<Ctr32BE<Aes>>,
     mask: ghash::Block,
-    ghash: GHash,
+    mac: GHash,
     mode: CipherState,
     associated_data_length: u64,
-    data_length: 0,
-    #[cfg(not(feature = "zeroize"))] 
-    associated_data_buffer: [0;BLOCK_SIZE],
-    #[cfg(feature = "zeroize")] 
-    associated_data_buffer: Zeroizing::new([0;BLOCK_SIZE]),
-    associated_data_buffer_pos: 0,
     data_length: u64,
+    #[cfg(not(feature = "zeroize"))] 
+    mac_buffer: [u8;BLOCK_SIZE],
+    #[cfg(feature = "zeroize")] 
+    mac_buffer: Zeroizing::new([u8;BLOCK_SIZE]),
+    mac_buffer_pos: usize,
     _ph: PhantomData<TagSize>,
 }
 
 impl<Aes, TagSize> StreamingCipher<Aes, TagSize>
 where
-    Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt + BlockCipherDecrypt + Clone,
+    Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt + Clone,
     TagSize: super::TagSize,
 {
     /// Initialize counter mode.
@@ -94,15 +91,17 @@ where
 
     /// Instantiate the underlying cipher with a particular nonce
     pub(crate) fn new<NonceSize: ArraySize>( cipher: &super::AesGcm<Aes, NonceSize, TagSize>, nonce: &Nonce<NonceSize>, direction: Direction ) -> Self {
-        let (ctr, mask) = Self::init_ctr( cipher, nonce);
+        let (ctr, mask) = Self::init_ctr( cipher, nonce );
 
         Self { 
             direction,
-            ctr: ctr.clone(),
+            cipher: StreamCipherCoreWrapper::from_core(ctr.clone()),
             mask, 
-            ghash: cipher.ghash.clone(), 
+            mac: cipher.ghash.clone(), 
             mode: CipherState::AfterNonce,
             associated_data_length: 0,
+            mac_buffer: [0;BLOCK_SIZE],
+            mac_buffer_pos: 0,
             data_length: 0,
             _ph: PhantomData,
         }
@@ -111,7 +110,7 @@ where
 
 impl<Aes, TagSize> BlockSizeUser for StreamingCipher<Aes, TagSize>
 where
-    Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt + BlockCipherDecrypt,
+    Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt,
     TagSize: super::TagSize,
 {
     type BlockSize = Aes::BlockSize;
@@ -119,7 +118,7 @@ where
 
 impl<Aes, TagSize> StreamingCipher<Aes, TagSize>
 where
-    Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt + BlockCipherDecrypt,
+    Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt,
     TagSize: super::TagSize,
 {
     /// Authenticate the lengths of the associated data and message
@@ -131,7 +130,7 @@ where
         let mut block = ghash::Block::default();
         block[..8].copy_from_slice(&associated_data_bits.to_be_bytes());
         block[8..].copy_from_slice(&buffer_bits.to_be_bytes());
-        self.ghash.update(&[block]);
+        self.mac.update(&[block]);
 
         Ok(())
     }
@@ -150,13 +149,84 @@ where
 
         self.associated_data_length += associated_data.len() as u64;
 
-        self.ghash.update( associated_data );
+        self.update_mac_buffer( associated_data );
 
         Ok(())
     }
+
+    fn update_mac_buffer( &mut self, mut data: &[u8] ) {
+        if data.len() == 0 {
+            return;
+        }
+
+        if self.mac_buffer_pos == 0 && data.len() % BLOCK_SIZE == 0 {
+            let (blocks, tail) = Array::slice_as_chunks( data );
+            debug_assert!( tail.len() == 0 );
+
+            self.mac.update(blocks);
+            return;
+        }
+
+        if self.mac_buffer_pos > 0 {
+            let mac_buffer_rem = core::cmp::min( BLOCK_SIZE - self.mac_buffer_pos, data.len() );
+
+            let head;
+            (head, data) = data.split_at( mac_buffer_rem );
+            debug_assert!( head.len() == mac_buffer_rem );
+
+            let dst = &mut self.mac_buffer[self.mac_buffer_pos..(self.mac_buffer_pos+mac_buffer_rem)];
+
+            dst.copy_from_slice( head );
+            self.mac_buffer_pos += mac_buffer_rem;
+            debug_assert!( self.mac_buffer_pos <= BLOCK_SIZE );
+
+            if self.mac_buffer_pos == BLOCK_SIZE {
+                #[cfg(not(feature = "zeroize"))] 
+                let mac_buffer = &self.mac_buffer;
+                #[cfg(feature = "zeroize")] 
+                let mac_buffer = &*self.mac_buffer;
+
+                let (blocks, tail) = Array::slice_as_chunks( mac_buffer );
+                debug_assert!( tail.len() == 0 );
+
+                self.mac.update( blocks );
+                self.mac_buffer_pos = 0;
+            };
+
+            if data.len() == 0 {
+                return;
+            }
+
+            debug_assert!( self.mac_buffer_pos == 0 );
+        }
+
+        let (blocks, tail) = Array::slice_as_chunks( data );
+        self.mac.update( blocks );
+
+        if tail.len() > 0 {
+            let dst = &mut self.mac_buffer[..tail.len()];
+            dst.copy_from_slice( tail );
+            self.mac_buffer_pos = tail.len();
+        }
+    }
+
+    fn finalize_mac_buffer( &mut self ) {
+        if self.mac_buffer_pos == 0 {
+            return;
+        }
+
+        #[cfg(not(feature = "zeroize"))] 
+        let mac_buffer = &self.mac_buffer[..self.mac_buffer_pos];
+        #[cfg(feature = "zeroize")] 
+        let mac_buffer = &self.mac_buffer[..self.mac_buffer_pos];
+
+        self.mac.update_padded( mac_buffer );
+        self.mac_buffer_pos = 0;
+    }
+
 }
 
-impl<Aes, TagSize> BlockCipherEncrypt for StreamingCipher<Aes, TagSize>
+impl<Aes, TagSize> StreamCipher for StreamingCipher<Aes, TagSize>
 where
     Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt,
     TagSize: super::TagSize,
@@ -187,12 +257,12 @@ where
 
         match self.direction {
             Direction::Encryption => {
-                self.ctr.apply_keystream_partial( buf.reborrow() );
+                self.cipher.apply_keystream_inout( buf.reborrow() );
                 self.update_mac_buffer( buf.get_out() );
             },
             Direction::Decryption => {
                 self.update_mac_buffer( buf.get_in() );
-                self.ctr.apply_keystream_partial( buf );
+                self.cipher.apply_keystream_inout( buf );
             },
         }
 
@@ -201,12 +271,11 @@ where
 
 }
 
-impl<Aes, TagSize> AeadFinalize<TagSize> for StreamingCipher<Aes, TagSize>
+impl<Aes> AeadFinalize<U16> for StreamingCipher<Aes, U16>
 where
     Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt,
-    TagSize: super::TagSize,
 {
-    fn finalize( mut self ) -> Result<Array<u8, TagSize>, Error> {
+    fn finalize( mut self ) -> Result<Array<u8, U16>, Error> {
         match self.mode {
             CipherState::AfterNonce => {
                 debug_assert!( self.mac_buffer_pos == 0 );
@@ -221,25 +290,19 @@ where
 
         self.authenticate_lengths( self.associated_data_length, self.data_length )?;
         
-        Ok(self.mac.finalize())
-    }
-
-    fn verify( mut self, expected: &Array<u8, TagSize> ) -> Result<(), Error> {
-        match self.mode {
-            CipherState::AfterNonce => {
-                debug_assert!( self.mac_buffer_pos == 0 );
-            },
-            CipherState::AssociatedData | CipherState::Data => {
-                self.finalize_mac_buffer();
-            },
-            CipherState::Error => {
-                return Err(Error);
-            }
+        let mut tag = self.mac.finalize();
+        for (a, b) in tag.as_mut_slice().iter_mut().zip(self.mask.as_slice()) {
+            *a ^= *b;
         }
 
-        self.authenticate_lengths( self.associated_data_length, self.data_length )?;
+        Ok(tag)
+    }
 
-        if self.mac.verify(expected).is_ok() {
+    fn verify( self, expected: &Array<u8, U16> ) -> Result<(), Error> {
+        let tag = self.finalize()?;
+
+        use subtle::ConstantTimeEq;
+        if expected[..16].ct_eq(&tag).into() {
             Ok(())
         } else {
             Err(Error)

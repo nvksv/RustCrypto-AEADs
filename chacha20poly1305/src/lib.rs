@@ -154,9 +154,9 @@ use aead::{
 use core::marker::PhantomData;
 
 #[cfg(feature = "streaming")]
-pub use self::streaming_cipher::{ StreamingCipher, Direction };
+use self::streaming_cipher::{ StreamingCipher, Direction };
 #[cfg(feature = "streaming")]
-pub use aead::{AeadToStreaming, AeadFinalize};
+use aead::{AeadToStreaming, AeadFinalize};
 // #[cfg(feature = "streaming")]
 // pub use ::cipher::{IvSizeUser, KeyIvInit, StreamCipher, StreamCipherSeek};
 

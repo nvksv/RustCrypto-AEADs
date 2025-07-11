@@ -225,7 +225,7 @@ where
         }
 
         #[cfg(not(feature = "zeroize"))] 
-        let mac_buffer = &self.mac_buffer;
+        let mac_buffer = &self.mac_buffer[..self.mac_buffer_pos];
         #[cfg(feature = "zeroize")] 
         let mac_buffer = &self.mac_buffer[..self.mac_buffer_pos];
 
