@@ -10,10 +10,6 @@ use zeroize::Zeroizing;
 /// Size of a ChaCha20 block in bytes
 const BLOCK_SIZE: usize = 64;
 
-/// Maximum number of blocks that can be encrypted with ChaCha20 before the
-/// counter overflows.
-const MAX_BLOCKS: usize = u32::MAX as usize;
-
 #[derive(Debug, Clone, Copy)]
 pub enum Direction {
     Encryption,

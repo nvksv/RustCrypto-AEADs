@@ -156,9 +156,7 @@ use core::marker::PhantomData;
 #[cfg(feature = "streaming")]
 use self::streaming_cipher::{ StreamingCipher, Direction };
 #[cfg(feature = "streaming")]
-use aead::{AeadToStreaming, AeadFinalize};
-// #[cfg(feature = "streaming")]
-// pub use ::cipher::{IvSizeUser, KeyIvInit, StreamCipher, StreamCipherSeek};
+use aead::AeadToStreaming;
 
 
 use chacha20::{ChaCha20, XChaCha20};
