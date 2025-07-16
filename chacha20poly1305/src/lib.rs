@@ -156,7 +156,7 @@ use core::marker::PhantomData;
 #[cfg(feature = "streaming")]
 use self::streaming_cipher::{ StreamingCipher, Direction };
 #[cfg(feature = "streaming")]
-use aead::AeadToStreaming;
+use aead::AeadToChunked;
 
 
 use chacha20::{ChaCha20, XChaCha20};
@@ -312,7 +312,7 @@ where
 impl<C, N: ArraySize> zeroize::ZeroizeOnDrop for ChaChaPoly1305<C, N> {}
 
 #[cfg(feature = "streaming")]
-impl<C, N> AeadToStreaming for ChaChaPoly1305<C, N>
+impl<C, N> AeadToChunked for ChaChaPoly1305<C, N>
 where
     C: KeyIvInit<KeySize = U32, IvSize = N> + StreamCipher + StreamCipherSeek,
     N: ArraySize,

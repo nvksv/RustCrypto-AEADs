@@ -120,7 +120,7 @@ use ghash::{GHash, universal_hash::UniversalHash};
 use zeroize::Zeroize;
 
 #[cfg(feature = "streaming")]
-use aead::AeadToStreaming;
+use aead::AeadToChunked;
 #[cfg(feature = "streaming")]
 use streaming_cipher::{StreamingCipher, Direction};
 
@@ -379,7 +379,7 @@ where
 }
 
 #[cfg(feature = "streaming")]
-impl<Aes, NonceSize> AeadToStreaming for AesGcm<Aes, NonceSize, U16>
+impl<Aes, NonceSize> AeadToChunked for AesGcm<Aes, NonceSize, U16>
 where
     Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt + Clone,
     NonceSize: ArraySize,

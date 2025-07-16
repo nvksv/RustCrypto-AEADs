@@ -1,7 +1,7 @@
 //! Core AEAD cipher implementation for (X)ChaCha20Poly1305.
 
 use ::cipher::{StreamCipher, StreamCipherSeek, StreamCipherError};
-use aead::{array::Array, inout::InOutBuf, Error, AeadFinalize};
+use aead::{array::Array, inout::InOutBuf, Error, AeadChunkedCipher};
 use poly1305::universal_hash::{KeyInit, UniversalHash, Key, Block};
 
 #[cfg(feature = "zeroize")]
@@ -85,69 +85,6 @@ where
     C: StreamCipher + StreamCipherSeek,
     H: UniversalHash,
 {
-    // /// Encrypt the given message in-place, returning the authentication tag
-    // pub fn encrypt_inout_detached(
-    //     mut self,
-    //     associated_data: &[u8],
-    //     mut buffer: InOutBuf<'_, '_, u8>,
-    // ) -> Result<Block<H>, Error> {
-    //     if self.mode != CipherState::AfterNonce {
-    //         self.mode = CipherState::Error;
-    //         return Err(Error);
-    //     }
-
-    //     if buffer.len() / BLOCK_SIZE >= MAX_BLOCKS {
-    //         return Err(Error);
-    //     }
-
-    //     self.mac.update_padded(associated_data);
-
-    //     // TODO(tarcieri): interleave encryption with Poly1305
-    //     // See: <https://github.com/RustCrypto/AEADs/issues/74>
-    //     self.cipher.apply_keystream_inout(buffer.reborrow());
-    //     self.mac.update_padded(buffer.get_out());
-
-    //     let associated_data_len: u64 = associated_data.len().try_into().map_err(|_| Error)?;
-    //     let buffer_len: u64 = buffer.get_out().len().try_into().map_err(|_| Error)?;
-    //     self.authenticate_lengths(associated_data_len, buffer_len)?;
-    //     Ok(self.mac.finalize())
-    // }
-
-    // /// Decrypt the given message, first authenticating ciphertext integrity
-    // /// and returning an error if it's been tampered with.
-    // pub fn decrypt_inout_detached(
-    //     mut self,
-    //     associated_data: &[u8],
-    //     buffer: InOutBuf<'_, '_, u8>,
-    //     tag: &Block<H>,
-    // ) -> Result<(), Error> {
-    //     if self.mode != CipherState::AfterNonce {
-    //         self.mode = CipherState::Error;
-    //         return Err(Error);
-    //     }
-
-    //     if buffer.len() / BLOCK_SIZE >= MAX_BLOCKS {
-    //         return Err(Error);
-    //     }
-
-    //     self.mac.update_padded(associated_data);
-    //     self.mac.update_padded(buffer.get_in());
-
-    //     let associated_data_len: u64 = associated_data.len().try_into().map_err(|_| Error)?;
-    //     let buffer_len: u64 = buffer.get_in().len().try_into().map_err(|_| Error)?;
-    //     self.authenticate_lengths(associated_data_len, buffer_len)?;
-
-    //     // This performs a constant-time comparison using the `subtle` crate
-    //     if self.mac.verify(tag).is_ok() {
-    //         // TODO(tarcieri): interleave decryption with Poly1305
-    //         // See: <https://github.com/RustCrypto/AEADs/issues/74>
-    //         self.cipher.apply_keystream_inout(buffer);
-    //         Ok(())
-    //     } else {
-    //         Err(Error)
-    //     }
-    // }
-
     /// Authenticate the lengths of the associated data and message
     fn authenticate_lengths(&mut self, associated_data_len: u64, buffer_len: u64) -> Result<(), Error> {
 
@@ -228,25 +165,6 @@ where
         self.mac.update_padded( mac_buffer );
         self.mac_buffer_pos = 0;
     }
-
-    pub fn apply_associated_data( &mut self, associated_data: &[u8] ) -> Result<(), Error> {
-        match self.mode {
-            CipherState::AfterNonce => {
-                self.mode = CipherState::AssociatedData;
-            },
-            CipherState::AssociatedData => {},
-            CipherState::Data | CipherState::Error => {
-                self.mode = CipherState::Error;
-                return Err(Error);
-            }
-        }
-
-        self.associated_data_length += associated_data.len() as u64;
-
-        self.update_mac_buffer( associated_data );
-
-        Ok(())
-    }
 }
 
 impl<C, H> StreamCipher for StreamingCipher<C, H>
@@ -294,11 +212,32 @@ where
 
 }
 
-impl<C, H> AeadFinalize<H::BlockSize> for StreamingCipher<C, H>
+impl<C, H> AeadChunkedCipher for StreamingCipher<C, H>
 where
     C: StreamCipher + StreamCipherSeek,
     H: UniversalHash,
 {
+    type TagSize = H::BlockSize;
+
+    fn apply_associated_data( &mut self, associated_data: &[u8] ) -> Result<(), Error> {
+        match self.mode {
+            CipherState::AfterNonce => {
+                self.mode = CipherState::AssociatedData;
+            },
+            CipherState::AssociatedData => {},
+            CipherState::Data | CipherState::Error => {
+                self.mode = CipherState::Error;
+                return Err(Error);
+            }
+        }
+
+        self.associated_data_length += associated_data.len() as u64;
+
+        self.update_mac_buffer( associated_data );
+
+        Ok(())
+    }
+
     fn finalize( mut self ) -> Result<Block<H>, Error> {
         match self.mode {
             CipherState::AfterNonce => {

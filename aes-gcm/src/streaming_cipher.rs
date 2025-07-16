@@ -5,7 +5,7 @@ use super::*;
 use core::marker::PhantomData;
 
 use ::cipher::{BlockSizeUser};
-use aead::{inout::InOutBuf, Error, AeadFinalize};
+use aead::{inout::InOutBuf, Error, AeadChunkedCipher};
 use ghash::{GHash, universal_hash::{UniversalHash}};
 use cipher::{
     array::{Array, ArraySize}, consts::U16, InnerIvInit, StreamCipher, StreamCipherCore, StreamCipherError, StreamCipherCoreWrapper,
@@ -135,25 +135,6 @@ where
         Ok(())
     }
 
-    pub fn apply_associated_data( &mut self, associated_data: &[u8] ) -> Result<(), Error> {
-        match self.mode {
-            CipherState::AfterNonce => {
-                self.mode = CipherState::AssociatedData;
-            },
-            CipherState::AssociatedData => {},
-            CipherState::Data | CipherState::Error => {
-                self.mode = CipherState::Error;
-                return Err(Error);
-            }
-        }
-
-        self.associated_data_length += associated_data.len() as u64;
-
-        self.update_mac_buffer( associated_data );
-
-        Ok(())
-    }
-
     fn update_mac_buffer( &mut self, mut data: &[u8] ) {
         if data.len() == 0 {
             return;
@@ -271,10 +252,31 @@ where
 
 }
 
-impl<Aes> AeadFinalize<U16> for StreamingCipher<Aes, U16>
+impl<Aes> AeadChunkedCipher for StreamingCipher<Aes, U16>
 where
     Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt,
 {
+    type TagSize = U16;
+
+    fn apply_associated_data( &mut self, associated_data: &[u8] ) -> Result<(), Error> {
+        match self.mode {
+            CipherState::AfterNonce => {
+                self.mode = CipherState::AssociatedData;
+            },
+            CipherState::AssociatedData => {},
+            CipherState::Data | CipherState::Error => {
+                self.mode = CipherState::Error;
+                return Err(Error);
+            }
+        }
+
+        self.associated_data_length += associated_data.len() as u64;
+
+        self.update_mac_buffer( associated_data );
+
+        Ok(())
+    }
+
     fn finalize( mut self ) -> Result<Array<u8, U16>, Error> {
         match self.mode {
             CipherState::AfterNonce => {
