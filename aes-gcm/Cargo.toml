@@ -30,14 +30,14 @@ aead = { version = "0.6.0-rc.1", features = ["alloc", "dev"], default-features =
 hex-literal = "1"
 
 [features]
-default = ["aes", "alloc", "os_rng", "streaming"]
+default = ["aes", "alloc", "os_rng", "chunked"]
 alloc = ["aead/alloc"]
 arrayvec = ["aead/arrayvec"]
 bytes = ["aead/bytes"]
 os_rng = ["aead/os_rng", "rand_core"]
 heapless = ["aead/heapless"]
 rand_core = ["aead/rand_core"]
-streaming = ["aead/streaming"]
+chunked = ["aead/chunked"]
 
 [package.metadata.docs.rs]
 all-features = true

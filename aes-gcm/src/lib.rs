@@ -98,7 +98,7 @@
 //! provide an impl of [`aead::Buffer`] for `bytes::BytesMut` (re-exported from the
 //! [`aead`] crate as [`aead::bytes::BytesMut`]).
 
-#[cfg(feature = "streaming")]
+#[cfg(feature = "chunked")]
 mod streaming_cipher;
 
 pub use aead::{self, AeadCore, AeadInOut, Error, Key, KeyInit, KeySizeUser};
@@ -119,9 +119,9 @@ use ghash::{GHash, universal_hash::UniversalHash};
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
-#[cfg(feature = "streaming")]
+#[cfg(feature = "chunked")]
 use aead::AeadToChunked;
-#[cfg(feature = "streaming")]
+#[cfg(feature = "chunked")]
 use streaming_cipher::{StreamingCipher, Direction};
 
 #[cfg(feature = "aes")]
@@ -378,7 +378,7 @@ where
     }
 }
 
-#[cfg(feature = "streaming")]
+#[cfg(feature = "chunked")]
 impl<Aes, NonceSize> AeadToChunked for AesGcm<Aes, NonceSize, U16>
 where
     Aes: BlockSizeUser<BlockSize = U16> + BlockCipherEncrypt + Clone,
@@ -388,11 +388,11 @@ where
     type Decryptor = StreamingCipher<Aes, U16>;
 
     #[inline]
-    fn to_encryptor( &self, nonce: &Array<u8, <Self as AeadCore>::NonceSize> ) -> Self::Encryptor {
+    fn to_encryptor( &self, nonce: &Array<u8, <Self as AeadCore>::NonceSize> ) -> <Self as AeadToChunked>::Encryptor {
         StreamingCipher::new( self, nonce, Direction::Encryption )
     }
 
-    fn to_decryptor( &self, nonce: &Array<u8, <Self as AeadCore>::NonceSize> ) -> Self::Encryptor {
+    fn to_decryptor( &self, nonce: &Array<u8, <Self as AeadCore>::NonceSize> ) -> <Self as AeadToChunked>::Encryptor {
         StreamingCipher::new( self, nonce, Direction::Decryption )
     }
 }

@@ -138,8 +138,8 @@
 //! ```
 
 mod cipher;
-#[cfg(feature = "streaming")]
-mod streaming_cipher;
+#[cfg(feature = "chunked")]
+mod chunked_cipher;
 
 pub use aead::{self, AeadCore, AeadInOut, Error, KeyInit, KeySizeUser, consts};
 
@@ -153,9 +153,9 @@ use aead::{
 };
 use core::marker::PhantomData;
 
-#[cfg(feature = "streaming")]
-use self::streaming_cipher::{ StreamingCipher, Direction };
-#[cfg(feature = "streaming")]
+#[cfg(feature = "chunked")]
+use self::chunked_cipher::{ ChunkedCipher, Direction };
+#[cfg(feature = "chunked")]
 use aead::AeadToChunked;
 
 
@@ -311,21 +311,21 @@ where
 #[cfg(feature = "zeroize")]
 impl<C, N: ArraySize> zeroize::ZeroizeOnDrop for ChaChaPoly1305<C, N> {}
 
-#[cfg(feature = "streaming")]
+#[cfg(feature = "chunked")]
 impl<C, N> AeadToChunked for ChaChaPoly1305<C, N>
 where
     C: KeyIvInit<KeySize = U32, IvSize = N> + StreamCipher + StreamCipherSeek,
     N: ArraySize,
 {
-    type Encryptor = StreamingCipher<C, poly1305::Poly1305>;
-    type Decryptor = StreamingCipher<C, poly1305::Poly1305>;
+    type Encryptor = ChunkedCipher<C, poly1305::Poly1305>;
+    type Decryptor = ChunkedCipher<C, poly1305::Poly1305>;
 
     #[inline]
     fn to_encryptor( &self, nonce: &Array<u8, <Self as AeadCore>::NonceSize> ) -> Self::Encryptor {
-        StreamingCipher::new(C::new(&self.key, nonce), Direction::Encryption )
+        ChunkedCipher::new(C::new(&self.key, nonce), Direction::Encryption )
     }
 
     fn to_decryptor( &self, nonce: &Array<u8, <Self as AeadCore>::NonceSize> ) -> Self::Encryptor {
-        StreamingCipher::new(C::new(&self.key, nonce), Direction::Decryption )
+        ChunkedCipher::new(C::new(&self.key, nonce), Direction::Decryption )
     }
 }

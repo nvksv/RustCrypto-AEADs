@@ -25,7 +25,7 @@ enum CipherState {
 }
 
 /// ChaCha20Poly1305 instantiated with a particular nonce
-pub struct StreamingCipher<C, H>
+pub struct ChunkedCipher<C, H>
 where
     C: StreamCipher + StreamCipherSeek,
     H: UniversalHash,
@@ -43,7 +43,7 @@ where
     mac_buffer_pos: usize,
 }
 
-impl<C, H> StreamingCipher<C, H>
+impl<C, H> ChunkedCipher<C, H>
 where
     C: StreamCipher + StreamCipherSeek,
     H: UniversalHash + KeyInit,
@@ -80,7 +80,7 @@ where
     }
 }
 
-impl<C, H> StreamingCipher<C, H>
+impl<C, H> ChunkedCipher<C, H>
 where
     C: StreamCipher + StreamCipherSeek,
     H: UniversalHash,
@@ -167,7 +167,7 @@ where
     }
 }
 
-impl<C, H> StreamCipher for StreamingCipher<C, H>
+impl<C, H> StreamCipher for ChunkedCipher<C, H>
 where
     C: StreamCipher + StreamCipherSeek,
     H: UniversalHash,
@@ -212,7 +212,7 @@ where
 
 }
 
-impl<C, H> AeadChunkedCipher for StreamingCipher<C, H>
+impl<C, H> AeadChunkedCipher for ChunkedCipher<C, H>
 where
     C: StreamCipher + StreamCipherSeek,
     H: UniversalHash,
