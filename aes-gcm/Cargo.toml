@@ -17,16 +17,16 @@ categories = ["cryptography", "no-std"]
 rust-version = "1.85"
 
 [dependencies]
-aead = { version = "0.6.0-rc.1", default-features = false, path = "../../traits/aead" }
-aes = { version = "0.9.0-rc.0", optional = true, path = "../../block-ciphers/aes" }
-cipher = { version = "0.5.0-rc.0", path = "../../traits/cipher" } #cipher = "0.5.0-rc.0"
-ctr = { version = "0.10.0-rc.0", path = "../../block-modes/ctr" } #ctr = "0.10.0-rc.0"
-ghash = { version = "0.6.0-rc.1", default-features = false, path = "../../universal-hashes/ghash" }
+aead = { version = "0.6.0-rc.1", default-features = false, path = "../../../RustCrypto/traits/aead" }
+aes = { version = "0.9.0-rc.0", optional = true, path = "../../../RustCrypto/block-ciphers/aes" }
+cipher = { version = "0.5.0-rc.0", path = "../../../RustCrypto/traits/cipher" } #cipher = "0.5.0-rc.0"
+ctr = { version = "0.10.0-rc.0", path = "../../../RustCrypto/block-modes/ctr" } #ctr = "0.10.0-rc.0"
+ghash = { version = "0.6.0-rc.1", default-features = false, path = "../../../RustCrypto/universal-hashes/ghash" }
 subtle = { version = "2", default-features = false }
 zeroize = { version = "1", optional = true, default-features = false }
 
 [dev-dependencies]
-aead = { version = "0.6.0-rc.1", features = ["alloc", "dev"], default-features = false, path = "../../traits/aead" }
+aead = { version = "0.6.0-rc.1", features = ["alloc", "dev"], default-features = false, path = "../../../RustCrypto/traits/aead" }
 hex-literal = "1"
 
 [features]

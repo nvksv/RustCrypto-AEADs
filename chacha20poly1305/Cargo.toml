@@ -20,14 +20,14 @@ categories = ["cryptography", "no-std"]
 rust-version = "1.85"
 
 [dependencies]
-aead = { version = "0.6.0-rc.1", default-features = false, path = "../../traits/aead" }
-chacha20 = { version = "0.10.0-rc.0", default-features = false, features = ["xchacha"], path = "../../stream-ciphers/chacha20" }
-cipher = { version = "0.5.0-rc.0", path = "../../traits/cipher" } #cipher = "0.5.0-rc.0"
-poly1305 = { version = "0.9.0-rc.1", path = "../../universal-hashes/poly1305" } # poly1305 = "0.9.0-rc.1"
+aead = { version = "0.6.0-rc.1", default-features = false, path = "../../../RustCrypto/traits/aead" }
+chacha20 = { version = "0.10.0-rc.0", default-features = false, features = ["xchacha"], path = "../../../RustCrypto/stream-ciphers/chacha20" }
+cipher = { version = "0.5.0-rc.0", path = "../../../RustCrypto/traits/cipher" } #cipher = "0.5.0-rc.0"
+poly1305 = { version = "0.9.0-rc.1", path = "../../../RustCrypto/universal-hashes/poly1305" } # poly1305 = "0.9.0-rc.1"
 zeroize = { version = "1.8", optional = true, default-features = false }
 
 [dev-dependencies]
-aead = { version = "0.6.0-rc.1", features = ["dev"], default-features = false, path = "../../traits/aead" }
+aead = { version = "0.6.0-rc.1", features = ["dev"], default-features = false, path = "../../../RustCrypto/traits/aead" }
 
 [features]
 default = ["alloc", "os_rng", "chunked", "zeroize"]
