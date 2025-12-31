@@ -12,36 +12,19 @@
 //!
 //! Simple usage (allocating, no associated data):
 //!
-#![cfg_attr(all(feature = "os_rng", feature = "heapless"), doc = "```")]
-#![cfg_attr(not(all(feature = "os_rng", feature = "heapless")), doc = "```ignore")]
+#![cfg_attr(feature = "getrandom", doc = "```")]
+#![cfg_attr(not(feature = "getrandom"), doc = "```ignore")]
+//! # fn main() -> Result<(), Box<dyn core::error::Error>> {
+//! // NOTE: requires the `getrandom` feature is enabled
+//!
 //! use xaes_256_gcm::{
-//!     Xaes256Gcm, Nonce, Key,
-//!     aead::{Aead, AeadCore, KeyInit, rand_core::OsRng},
+//!     aead::{Aead, AeadCore, Generate, Key, KeyInit},
+//!     Xaes256Gcm, Nonce
 //! };
 //!
-//! # fn gen_key() -> Result<(), core::array::TryFromSliceError> {
-//! // The encryption key can be generated randomly:
-//! # #[cfg(feature = "os_rng")] {
-//! let key = Xaes256Gcm::generate_key().expect("generate key");
-//! # }
-//!
-//! // Transformed from a byte array:
-//! let key: &[u8; 32] = &[42; 32];
-//! let key: &Key = key.into();
-//!
-//! // Note that you can get byte array from slice using the `TryInto` trait:
-//! let key: &[u8] = &[42; 32];
-//! let key: [u8; 32] = key.try_into()?;
-//! # Ok(()) }
-//!
-//! # fn main() -> Result<(), Box<dyn core::error::Error>> {
-//! // Alternatively, the key can be transformed directly from a byte slice
-//! // (panics on length mismatch):
-//! # let key: &[u8] = &[42; 32];
-//! let key = <Key>::from_slice(key);
-//!
+//! let key = Key::<Xaes256Gcm>::generate();
 //! let cipher = Xaes256Gcm::new(&key);
-//! let nonce = Xaes256Gcm::generate_nonce().expect("Generate nonce"); // 192-bits
+//! let nonce = Nonce::generate(); // 192-bits; MUST be unique per message
 //! let ciphertext = cipher.encrypt(&nonce, b"plaintext message".as_ref())?;
 //! let plaintext = cipher.decrypt(&nonce, ciphertext.as_ref())?;
 //! assert_eq!(&plaintext, b"plaintext message");

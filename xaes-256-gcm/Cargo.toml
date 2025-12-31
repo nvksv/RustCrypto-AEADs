@@ -1,6 +1,6 @@
 [package]
 name = "xaes-256-gcm"
-version = "0.0.1-pre.0"
+version = "0.1.0-rc.2"
 description = """
 Pure Rust implementation of the XAES-256-GCM extended-nonce Authenticated
 Encryption with Associated Data (AEAD).
@@ -16,22 +16,21 @@ categories = ["cryptography", "no-std"]
 rust-version = "1.85"
 
 [dependencies]
-aead = { version = "0.6.0-rc.1", default-features = false, path = "../../traits/aead" }
-aes = { version = "0.9.0-rc.0", path = "../../block-ciphers/aes" } # aes = "0.9.0-rc.0"
-aes-gcm = { version = "0.11.0-rc.0", default-features = false, features = ["aes"], path = "../aes-gcm" }
-cipher = { version = "0.5.0-rc.0", path = "../../traits/cipher" } # cipher = "0.5.0-rc.0"
-aead-stream = { version = "0.6.0-rc.0", optional = true, default-features = false }
+aead = { version = "0.6.0-rc.5", default-features = false, path = "../../traits/aead" }
+aes = { version = "0.9.0-rc.2", path = "../../block-ciphers/aes" }
+aes-gcm = { version = "0.11.0-rc.2", default-features = false, features = ["aes"], path = "../aes-gcm" }
+cipher = { version = "0.5.0-rc.3", path = "../../traits/cipher" }
+aead-stream = { version = "0.6.0-rc.2", optional = true, default-features = false }
 
 [dev-dependencies]
-aead = { version = "0.6.0-rc.1", features = ["dev"], default-features = false, path = "../../traits/aead" }
+aead = { version = "0.6.0-rc.5", features = ["dev"], default-features = false, path = "../../traits/aead" }
 hex-literal = "1"
 
 [features]
-default = ["alloc", "os_rng"]
+default = ["alloc", "getrandom"]
 alloc = ["aead/alloc", "aead-stream?/alloc", "aes-gcm/alloc"]
 arrayvec = ["aead/arrayvec", "aes-gcm/arrayvec"]
-os_rng = ["aead/os_rng", "aes-gcm/os_rng", "rand_core"]
-heapless = ["aead/heapless", "aes-gcm/heapless"]
+getrandom = ["aes-gcm/getrandom"]
 rand_core = ["aead/rand_core", "aes-gcm/rand_core"]
 
 [package.metadata.docs.rs]

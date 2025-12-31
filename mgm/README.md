@@ -2,10 +2,10 @@
 
 [![crate][crate-image]][crate-link]
 [![Docs][docs-image]][docs-link]
+[![Build Status][build-image]][build-link]
 ![Apache2/MIT licensed][license-image]
 ![Rust Version][rustc-image]
 [![Project Chat][chat-image]][chat-link]
-[![Build Status][build-image]][build-link]
 
 Pure Rust implementation of the Multilinear Galois Mode ([MGM]): an
 Authenticated Encryption with Associated Data ([AEAD]) algorithm generic over
@@ -23,8 +23,8 @@ USE AT YOUR OWN RISK!
 
 Licensed under either of:
 
- * [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
- * [MIT license](http://opensource.org/licenses/MIT)
+ * [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+ * [MIT license](https://opensource.org/licenses/MIT)
 
 at your option.
 
@@ -40,12 +40,12 @@ dual licensed as above, without any additional terms or conditions.
 [crate-link]: https://crates.io/crates/mgm
 [docs-image]: https://docs.rs/mgm/badge.svg
 [docs-link]: https://docs.rs/mgm
+[build-image]: https://github.com/RustCrypto/AEADs/actions/workflows/mgm.yml/badge.svg
+[build-link]: https://github.com/RustCrypto/AEADs/actions/workflows/mgm.yml
 [license-image]: https://img.shields.io/badge/license-Apache2.0/MIT-blue.svg
-[rustc-image]: https://img.shields.io/badge/rustc-1.81+-blue.svg
+[rustc-image]: https://img.shields.io/badge/rustc-1.85+-blue.svg
 [chat-image]: https://img.shields.io/badge/zulip-join_chat-blue.svg
 [chat-link]: https://rustcrypto.zulipchat.com/#narrow/stream/260038-AEADs
-[build-image]: https://github.com/RustCrypto/AEADs/workflows/mgm/badge.svg?branch=master&event=push
-[build-link]: https://github.com/RustCrypto/AEADs/actions
 
 [//]: # (general links)
 

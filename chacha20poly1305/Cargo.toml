@@ -1,6 +1,6 @@
 [package]
 name = "chacha20poly1305"
-version = "0.11.0-rc.0"
+version = "0.11.0-rc.2"
 description = """
 Pure Rust implementation of the ChaCha20Poly1305 Authenticated Encryption
 with Additional Data Cipher (RFC 8439) with optional architecture-specific
@@ -20,22 +20,21 @@ categories = ["cryptography", "no-std"]
 rust-version = "1.85"
 
 [dependencies]
-aead = { version = "0.6.0-rc.1", default-features = false, path = "../../../RustCrypto/traits/aead" }
-chacha20 = { version = "0.10.0-rc.0", default-features = false, features = ["xchacha"], path = "../../../RustCrypto/stream-ciphers/chacha20" }
-cipher = { version = "0.5.0-rc.0", path = "../../../RustCrypto/traits/cipher" } #cipher = "0.5.0-rc.0"
-poly1305 = { version = "0.9.0-rc.1", path = "../../../RustCrypto/universal-hashes/poly1305" } # poly1305 = "0.9.0-rc.1"
+aead = { version = "0.6.0-rc.5", default-features = false, path = "../../../RustCrypto/traits/aead" }
+chacha20 = { version = "0.10.0-rc.6", default-features = false, features = ["xchacha"] }
+cipher =  { version = "0.5.0-rc.3", path = "../../../RustCrypto/traits/cipher" }
+poly1305 = { version = "0.9.0-rc.3", path = "../../../RustCrypto/universal-hashes/poly1305" }
 zeroize = { version = "1.8", optional = true, default-features = false }
 
 [dev-dependencies]
-aead = { version = "0.6.0-rc.1", features = ["dev"], default-features = false, path = "../../../RustCrypto/traits/aead" }
+aead = { version = "0.6.0-rc.5", features = ["dev"], default-features = false, path = "../../../RustCrypto/traits/aead" }
 
 [features]
-default = ["alloc", "os_rng", "chunked", "zeroize"]
+default = ["alloc", "getrandom"]
 alloc = ["aead/alloc"]
 arrayvec = ["aead/arrayvec"]
 bytes = ["aead/bytes"]
-os_rng = ["aead/os_rng", "rand_core"]
-heapless = ["aead/heapless"]
+getrandom = ["aead/getrandom"]
 rand_core = ["aead/rand_core"]
 reduced-round = []
 zeroize = ["dep:zeroize", "chacha20/zeroize"]
