@@ -8,12 +8,12 @@ name = "aead"
 version = "0.6.0-rc.1"
 dependencies = [
  "arrayvec",
- "blobby",
+ "blobby 0.4.0-pre.0",
  "bytes",
  "cipher 0.5.0-rc.0",
  "crypto-common 0.2.0-rc.3",
  "heapless",
- "inout",
+ "inout 0.2.0-rc.5",
 ]
 
 [[package]]
@@ -23,11 +23,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c01559752fbde7734af628961723aa734aa46351cbf5c9ce41133ad2ae1a09b9"
 dependencies = [
  "arrayvec",
- "blobby",
+ "blobby 0.4.0-pre.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes",
  "crypto-common 0.2.0-rc.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "heapless",
- "inout",
+ "inout 0.2.0-rc.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -90,7 +90,7 @@ version = "0.8.0-rc.0"
 dependencies = [
  "aead 0.6.0-rc.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "aes 0.9.0-rc.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "blobby",
+ "blobby 0.4.0-pre.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cipher 0.5.0-rc.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cmac",
  "ctr 0.10.0-rc.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -168,6 +168,10 @@ checksum = "5c8214115b7bf84099f1309324e63141d4c5d7cc26862f97a0a857dbefe165bd"
 [[package]]
 name = "blobby"
 version = "0.4.0-pre.0"
+
+[[package]]
+name = "blobby"
+version = "0.4.0-pre.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a859067dcb257cb2ae028cb821399b55140b76fb8b2a360e052fe109019db43"
 
@@ -177,7 +181,7 @@ version = "0.11.0-rc.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a229bfd78e4827c91b9b95784f69492c1b77c1ab75a45a8a037b139215086f94"
 dependencies = [
- "hybrid-array",
+ "hybrid-array 0.3.0",
 ]
 
 [[package]]
@@ -236,7 +240,7 @@ name = "cipher"
 version = "0.5.0-rc.0"
 dependencies = [
  "crypto-common 0.2.0-rc.3",
- "inout",
+ "inout 0.2.0-rc.5",
 ]
 
 [[package]]
@@ -246,7 +250,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd4ef774202f1749465fc7cf88d70fc30620e8cacd5429268f4bff7d003bd976"
 dependencies = [
  "crypto-common 0.2.0-rc.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "inout",
+ "inout 0.2.0-rc.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "zeroize",
 ]
 
@@ -274,7 +278,7 @@ dependencies = [
 name = "crypto-common"
 version = "0.2.0-rc.3"
 dependencies = [
- "hybrid-array",
+ "hybrid-array 0.3.1",
  "rand_core",
 ]
 
@@ -284,7 +288,7 @@ version = "0.2.0-rc.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a23fa214dea9efd4dacee5a5614646b30216ae0f05d4bb51bafb50e9da1c5be"
 dependencies = [
- "hybrid-array",
+ "hybrid-array 0.3.0",
  "rand_core",
 ]
 
@@ -310,7 +314,7 @@ version = "0.4.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb24c766034b76390c67f3d9c44e63019febeb4cc39e4ba40b5fc79e20c898e1"
 dependencies = [
- "hybrid-array",
+ "hybrid-array 0.3.0",
 ]
 
 [[package]]
@@ -345,6 +349,16 @@ dependencies = [
  "cmac",
  "ctr 0.10.0-rc.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "subtle",
+]
+
+[[package]]
+name = "generic-array"
+version = "0.14.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a"
+dependencies = [
+ "typenum",
+ "version_check",
 ]
 
 [[package]]
@@ -408,12 +422,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "hybrid-array"
+version = "0.3.1"
+dependencies = [
+ "generic-array",
+ "typenum",
+]
+
+[[package]]
+name = "inout"
+version = "0.2.0-rc.5"
+dependencies = [
+ "hybrid-array 0.3.1",
+]
+
+[[package]]
 name = "inout"
 version = "0.2.0-rc.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c774c86bce20ea04abe1c37cf0051c5690079a3a28ef5fdac2a5a0412b3d7d74"
 dependencies = [
- "hybrid-array",
+ "hybrid-array 0.3.0",
 ]
 
 [[package]]
@@ -561,6 +590,12 @@ dependencies = [
  "crypto-common 0.2.0-rc.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "subtle",
 ]
+
+[[package]]
+name = "version_check"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "wasi"
